@@ -1,39 +1,90 @@
-from pycomm3 import LogixDriver
+"""
+Escáner de códigos QR con Streamlit
+------------------------------------
+Permite escanear un código QR usando la cámara del dispositivo
+o subiendo una imagen desde el equipo.
+
+Requisitos:
+    pip install streamlit opencv-python-headless numpy
+
+Ejecutar:
+    streamlit run qr_scanner_app.py
+"""
+
 import streamlit as st
-from PIL import Image
-import numpy as np
 import cv2
+import numpy as np
 
-st.set_page_config(page_title="Lector de QR", page_icon="📷")
-st.title("📷 Lector de código QR")
+st.set_page_config(page_title="Escáner de QR", page_icon="📷", layout="centered")
 
-# Elegir el origen de la imagen
-opcion = st.radio("Elige una opción:", ["Subir foto", "Usar cámara"])
+st.title("📷 Escáner de códigos QR")
+st.write(
+    "Usa la cámara para tomar una foto de un código QR, o sube una imagen. "
+    "La app detectará y decodificará el contenido automáticamente."
+)
 
-imagen = None
-if opcion == "Subir foto":
-    archivo = st.file_uploader("Sube una imagen con un QR", type=["png", "jpg", "jpeg"])
-    if archivo is not None:
-        imagen = Image.open(archivo)
-else:
-    foto = st.camera_input("Toma una foto del QR")
-    if foto is not None:
-        imagen = Image.open(foto)
+detector = cv2.QRCodeDetector()
 
-# Procesar la imagen si existe
-if imagen is not None:
-    st.image(imagen, caption="Imagen capturada", use_container_width=True)
 
-    # Convertir a formato compatible con OpenCV
-    imagen_np = np.array(imagen.convert("RGB"))
-    imagen_cv = cv2.cvtColor(imagen_np, cv2.COLOR_RGB2BGR)
+def decode_qr(image_bytes: bytes):
+    """Recibe bytes de imagen y devuelve (texto, imagen_con_marcas) o (None, imagen)."""
+    file_bytes = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
-    # Detectar y decodificar el QR
-    detector = cv2.QRCodeDetector()
-    datos, bbox, _ = detector.detectAndDecode(imagen_cv)
+    if img is None:
+        return None, None
 
-    if datos:
-        st.success("✅ Código QR detectado:")
-        st.code(datos)
+    # Intenta detectar y decodificar (uno o varios códigos)
+    retval, decoded_info, points, _ = detector.detectAndDecodeMulti(img)
+
+    resultados = []
+    if retval and points is not None:
+        for texto, pts in zip(decoded_info, points):
+            if texto:  # solo si se pudo decodificar
+                resultados.append(texto)
+                pts = pts.astype(int)
+                cv2.polylines(img, [pts], True, (0, 255, 0), 3)
+
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return resultados, img_rgb
+
+
+tab1, tab2 = st.tabs(["📸 Usar cámara", "🖼️ Subir imagen"])
+
+image_bytes = None
+
+with tab1:
+    camera_photo = st.camera_input("Apunta la cámara al código QR")
+    if camera_photo is not None:
+        image_bytes = camera_photo.getvalue()
+
+with tab2:
+    uploaded_file = st.file_uploader(
+        "Sube una imagen con un código QR", type=["png", "jpg", "jpeg", "bmp"]
+    )
+    if uploaded_file is not None:
+        image_bytes = uploaded_file.getvalue()
+
+if image_bytes is not None:
+    resultados, img_procesada = decode_qr(image_bytes)
+
+    if img_procesada is not None:
+        st.image(img_procesada, caption="Imagen analizada", use_container_width=True)
+
+    if resultados:
+        st.success(f"✅ Se {'detectó' if len(resultados) == 1 else 'detectaron'} "
+                   f"{len(resultados)} código(s) QR")
+        for i, texto in enumerate(resultados, start=1):
+            st.subheader(f"Resultado {i}")
+            st.code(texto, language=None)
+
+            # Si el contenido parece una URL, mostrar un botón que lleva a la página
+            if texto.startswith("http://") or texto.startswith("https://"):
+                st.link_button("🔗 Ir a la página", texto, use_container_width=True)
+            else:
+                st.caption("El contenido no es una URL, así que no se muestra botón de enlace.")
     else:
-        st.warning("⚠️ No se detectó ningún código QR en la imagen.")
+        st.warning("⚠️ No se detectó ningún código QR en la imagen. Intenta de nuevo "
+                    "con mejor enfoque, iluminación o acercando la cámara.")
+else:
+    st.info("Esperando una imagen desde la cámara o un archivo subido...")
