@@ -15,6 +15,10 @@ import streamlit as st
 import cv2
 import numpy as np
 
+from pycomm3 import LogixDriver
+
+PLC_IP = "10.16.20.20"   # Cambia por la IP de tu PLC
+
 st.set_page_config(page_title="Escáner de QR", page_icon="📷", layout="centered")
 
 st.title("📷 Escáner de códigos QR")
@@ -77,9 +81,22 @@ if image_bytes is not None:
         for i, texto in enumerate(resultados, start=1):
             st.subheader(f"Resultado {i}")
             st.code(texto, language=None)
+            if st.button(f"📤 Enviar QR {i} al PLC", key=f"send_{i}"):
 
+                try:
+                    with LogixDriver(PLC_IP) as plc:
+                        resultado = plc.write(("QR_Code", texto))
+
+                    if resultado:
+                        st.success("Código enviado al PLC correctamente.")
+                    else:
+                        st.error("No fue posible escribir el tag.")
+
+                except Exception as e:
+                    st.error(f"Error de comunicación: {e}")
+            
             # Si el contenido parece una URL, mostrar un botón que lleva a la página
-            if texto.startswith("http://") or texto.startswith("https://"):
+            if texto.startswith(("http://", "https://")):
                 st.link_button("🔗 Ir a la página", texto, use_container_width=True)
             else:
                 st.caption("El contenido no es una URL, así que no se muestra botón de enlace.")
