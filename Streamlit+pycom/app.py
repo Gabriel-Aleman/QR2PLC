@@ -17,7 +17,8 @@ import numpy as np
 
 from pycomm3 import LogixDriver
 
-PLC_IP = "10.16.20.20"   # Cambia por la IP de tu PLC
+PLC_IP  = "10.16.20.20"   # Cambia por la IP de tu PLC
+tagName = "QR_Code"
 
 st.set_page_config(page_title="Escáner de QR", page_icon="📷", layout="centered")
 
@@ -85,7 +86,7 @@ if image_bytes is not None:
 
                 try:
                     with LogixDriver(PLC_IP) as plc:
-                        resultado = plc.write(("QR_Code", texto))
+                        resultado = plc.write((tagName, texto))
 
                     if resultado:
                         st.success("Código enviado al PLC correctamente.")
