@@ -33,8 +33,8 @@ detector = cv2.QRCodeDetector()
 
 def decode_qr(image_bytes: bytes):
     """Recibe bytes de imagen y devuelve (texto, imagen_con_marcas) o (None, imagen)."""
-    file_bytes = np.frombuffer(image_bytes, np.uint8)
-    img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    file_bytes  = np.frombuffer(image_bytes, np.uint8)
+    img         = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
 
     if img is None:
         return None, None
@@ -99,8 +99,6 @@ if image_bytes is not None:
             # Si el contenido parece una URL, mostrar un botón que lleva a la página
             if texto.startswith(("http://", "https://")):
                 st.link_button("🔗 Ir a la página", texto, use_container_width=True)
-            else:
-                st.caption("El contenido no es una URL, así que no se muestra botón de enlace.")
     else:
         st.warning("⚠️ No se detectó ningún código QR en la imagen. Intenta de nuevo "
                     "con mejor enfoque, iluminación o acercando la cámara.")
