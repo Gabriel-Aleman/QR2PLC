@@ -10,12 +10,11 @@ Requisitos:
 Ejecutar:
     streamlit run qr_scanner_app.py
 """
-
-import streamlit as st
-import cv2
-import numpy as np
-
 from pycomm3 import LogixDriver
+import streamlit as st
+import numpy as np
+import cv2
+
 
 PLC_IP  = "10.16.20.20"   # Cambia por la IP de tu PLC
 tagName = "QR_Code"
@@ -53,6 +52,10 @@ def decode_qr(image_bytes: bytes):
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return resultados, img_rgb
 
+#Aplicación:
+#----------------------------------------------------------------------------------------
+with st.sidebar:
+    st.link_button("⚙️ Aplicación OPTIX", "http://localhost:443/")
 
 tab1, tab2 = st.tabs(["📸 Usar cámara", "🖼️ Subir imagen"])
 
