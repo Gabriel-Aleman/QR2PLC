@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("QrScannerAuto")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+73fba0d4676ca0256c60eb1ae1ebbae69641bea9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f4a025f9a9260824f748e6f5e6f2822af7ae8256")]
 [assembly: System.Reflection.AssemblyProductAttribute("QrScannerAuto")]
 [assembly: System.Reflection.AssemblyTitleAttribute("QrScannerAuto")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
