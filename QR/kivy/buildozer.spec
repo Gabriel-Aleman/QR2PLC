@@ -7,7 +7,7 @@ source.include_exts = py,png,jpg,kv,json
 version = 1.0
 
 # opencv usa la receta de python-for-android (la primera compilación tarda bastante)
-requirements = python3,kivy==2.3.1,numpy,opencv,plyer,pycomm3
+requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.1,numpy,opencv,plyer,pycomm3
 p4a.branch = develop
 
 orientation = portrait
