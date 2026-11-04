@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>QR a PLC</title>
+<style>
+  body { font-family: sans-serif; max-width: 420px; margin: 20px auto; text-align: center; }
+  video { width: 100%; background: #000; }
+  button { font-size: 18px; padding: 10px 25px; margin: 10px 5px; }
+  #qr { font-weight: bold; word-break: break-all; }
+</style>
+</head>
+<body>
+  <h2>QR → PLC</h2>
+  <video id="video" autoplay playsinline muted></video>
+  <canvas id="canvas" hidden></canvas>
+  <p>QR: <span id="qr">(vacío)</span></p>
+  <button onclick="escanear()">Escanear QR</button>
+  <button onclick="enviar()">Enviar al PLC</button>
+  <p id="estado"></p>
+
+<script>
+  let codigoQR = "";      // aquí se guarda el dato escaneado
+  let escaneando = false;
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const estado = document.getElementById("estado");
+
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(s => video.srcObject = s)
+    .catch(e => estado.textContent = "No se pudo abrir la cámara: " + e);
+
+  function escanear() {
+    escaneando = true;
+    estado.textContent = "Buscando QR..."; estado.style.color = "black";
+    buscar();
+  }
+
+  async function buscar() {
+    if (!escaneando) return;
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    const foto = await new Promise(r => canvas.toBlob(r, "image/jpeg", 0.8));
+    const res = await (await fetch("/leer", { method: "POST", body: foto })).json();
+    if (res.codigo) {
+      escaneando = false;
+      codigoQR = res.codigo;
+      document.getElementById("qr").textContent = codigoQR;
+      estado.textContent = "QR leído";
+    } else {
+      setTimeout(buscar, 300);
+    }
+  }
+
+  async function enviar() {
+    if (!codigoQR) { estado.textContent = "Primero escanea un QR"; estado.style.color = "orange"; return; }
+    estado.textContent = "Enviando..."; estado.style.color = "black";
+    const res = await (await fetch("/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codigo: codigoQR })
+    })).json();
+    estado.textContent = res.ok ? "Enviado al PLC ✔" : "Error: " + res.error;
+    estado.style.color = res.ok ? "green" : "red";
+  }
+</script>
+</body>
+</html>
