@@ -65,18 +65,57 @@ KV = """
     canvas.after:
         PopMatrix
 
-<ActionButton@Button>:
-    font_size: sp(15)
+# Nombres propios (QrBoton, QrModo) para no chocar con widgets de Kivy.
+<QrBoton@Button>:
+    fondo: (0.16, 0.45, 0.85, 1)
+    font_size: sp(17)
+    color: 1, 1, 1, 1
+    disabled_color: 0.72, 0.75, 0.78, 1
     background_normal: ''
+    background_down: ''
     background_disabled_normal: ''
-    background_color: (0.16, 0.45, 0.85, 1) if not self.disabled else (0.25, 0.27, 0.32, 1)
+    background_disabled_down: ''
+    background_color: 0, 0, 0, 0
     halign: 'center'
-    text_size: self.width - dp(8), None
+    valign: 'middle'
+    text_size: self.width - dp(12), None
+    canvas.before:
+        Color:
+            rgba: (0.25, 0.27, 0.30, 1) if self.disabled else ([c * 0.8 for c in self.fondo[:3]] + [1] if self.state == 'down' else self.fondo)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(6)]
+
+<QrModo@ToggleButton>:
+    font_size: sp(17)
+    color: 1, 1, 1, 1
+    background_normal: ''
+    background_down: ''
+    background_color: 0, 0, 0, 0
+    group: 'mode'
+    allow_no_selection: False
+    canvas.before:
+        Color:
+            rgba: (0.17, 0.56, 0.79, 1) if self.state == 'down' else (0.23, 0.25, 0.28, 1)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(6)]
+
+<QrCampo@TextInput>:
+    font_size: sp(18)
+    background_normal: ''
+    background_active: ''
+    background_color: 0.95, 0.96, 0.97, 1
+    foreground_color: 0.08, 0.09, 0.11, 1
+    cursor_color: 0.16, 0.45, 0.85, 1
+    padding: dp(14), (self.height - self.line_height) / 2
 
 BoxLayout:
     orientation: 'vertical'
-    padding: dp(12)
-    spacing: dp(8)
+    padding: dp(20), dp(16), dp(20), dp(20)
+    spacing: dp(14)
     canvas.before:
         Color:
             rgba: 0.08, 0.09, 0.11, 1
@@ -86,92 +125,110 @@ BoxLayout:
 
     BoxLayout:
         size_hint_y: None
-        height: dp(48)
+        height: dp(52)
+        spacing: dp(12)
         Label:
             text: 'Escáner de códigos QR'
             bold: True
-            font_size: sp(21)
+            font_size: sp(24)
             text_size: self.size
             halign: 'left'
             valign: 'middle'
-        Button:
+        QrBoton:
             text: 'OPTIX'
+            fondo: (0.23, 0.25, 0.28, 1)
             size_hint_x: None
-            width: dp(96)
+            width: dp(110)
             on_release: app.open_optix()
 
     BoxLayout:
         size_hint_y: None
-        height: dp(44)
-        spacing: dp(8)
+        height: dp(50)
+        spacing: dp(12)
         Label:
             text: 'IP del PLC'
+            font_size: sp(17)
+            color: 0.79, 0.82, 0.86, 1
             size_hint_x: None
-            width: dp(84)
-        TextInput:
+            width: dp(96)
+            text_size: self.size
+            halign: 'left'
+            valign: 'middle'
+        QrCampo:
             id: ip_input
             multiline: False
-            font_size: sp(16)
-            padding: dp(10), dp(10)
             input_filter: lambda t, undo: ''.join(c for c in t if c.isdigit() or c == '.')
             on_text: app.set_plc_ip(self.text)
 
     BoxLayout:
         size_hint_y: None
-        height: dp(44)
-        spacing: dp(8)
-        ToggleButton:
+        height: dp(52)
+        spacing: dp(12)
+        QrModo:
             id: btn_camera
             text: 'Usar cámara'
-            group: 'mode'
             state: 'down'
-            allow_no_selection: False
             on_release: app.show_camera()
-        ToggleButton:
+        QrModo:
             id: btn_image
             text: 'Subir imagen'
-            group: 'mode'
-            allow_no_selection: False
             on_release: app.pick_image()
 
-    FloatLayout:
-        id: preview
-        Image:
-            id: result_image
-            opacity: 0
-            fit_mode: 'contain'
-            size_hint: 1, 1
-            pos_hint: {'x': 0, 'y': 0}
+    # Panel de vista previa: recorta la cámara para que no se salga.
+    StencilView:
+        id: preview_clip
+        canvas.before:
+            Color:
+                rgba: 0.05, 0.055, 0.07, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(10)]
+        FloatLayout:
+            id: preview
+            pos: preview_clip.pos
+            size: preview_clip.size
+            Image:
+                id: result_image
+                opacity: 0
+                fit_mode: 'contain'
+                size_hint: 0.94, 0.94
+                pos_hint: {'center_x': 0.5, 'center_y': 0.5}
 
     Label:
         text: app.status_text
         color: app.status_color
+        font_size: sp(18)
+        bold: True
         size_hint_y: None
-        height: self.texture_size[1] + dp(12)
+        height: self.texture_size[1] + dp(6)
         text_size: self.width, None
         halign: 'center'
 
-    TextInput:
+    QrCampo:
         text: app.qr_text
         readonly: True
-        font_size: sp(15)
+        multiline: False
+        font_name: 'RobotoMono-Regular'
+        font_size: sp(17)
         size_hint_y: None
-        height: dp(72) if app.qr_text else 0
+        height: dp(60) if app.qr_text else 0
         opacity: 1 if app.qr_text else 0
 
-    BoxLayout:
+    GridLayout:
+        cols: 3
         size_hint_y: None
-        height: dp(56)
-        spacing: dp(8)
-        ActionButton:
+        height: dp(60)
+        spacing: dp(12)
+        QrBoton:
             text: 'Enviando...' if app.sending else 'Enviar QR al PLC'
             disabled: (not app.qr_text) or app.sending or (not app.scan_enabled)
             on_release: app.send_to_plc()
-        ActionButton:
+        QrBoton:
             text: 'Ir a la página'
             disabled: not app.qr_is_url
             on_release: app.open_qr_url()
-        ActionButton:
+        QrBoton:
             text: 'Escanear de nuevo'
             on_release: app.show_camera()
 """
