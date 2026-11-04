@@ -27,6 +27,7 @@ from kivy.lang import Builder
 from kivy.properties import (BooleanProperty, ListProperty, NumericProperty,
                              StringProperty)
 from kivy.storage.jsonstore import JsonStore
+from kivy.uix.image import Image
 from kivy.utils import platform
 from pycomm3 import LogixDriver
 
@@ -176,6 +177,50 @@ BoxLayout:
 """
 
 
+class DesktopCamera(Image):
+    """Cámara para PC usando OpenCV directamente.
+
+    El proveedor de cámara de Kivy para OpenCV falla con versiones recientes
+    de OpenCV ('CameraOpenCV' object has no attribute 'fps'), así que en
+    escritorio se lee la webcam con cv2.VideoCapture. En Android se sigue
+    usando la cámara nativa de Kivy.
+    """
+    play = BooleanProperty(False)
+
+    def __init__(self, index=0, **kwargs):
+        super().__init__(**kwargs)
+        backend = cv2.CAP_DSHOW if platform == "win" else cv2.CAP_ANY
+        self._cap = cv2.VideoCapture(index, backend)
+        if not self._cap.isOpened():
+            self._cap = cv2.VideoCapture(index)
+        if not self._cap.isOpened():
+            raise RuntimeError("no se encontró ninguna webcam")
+        self.frame_bgr = None
+        self._event = Clock.schedule_interval(self._update, 1 / 30)
+
+    def _update(self, dt):
+        if not self.play:
+            return
+        ok, frame = self._cap.read()
+        if not ok or frame is None:
+            return
+        self.frame_bgr = frame
+        rgb = cv2.flip(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), 0)
+        h, w = rgb.shape[:2]
+        tex = self.texture
+        if tex is None or tex.size != (w, h):
+            tex = Texture.create(size=(w, h), colorfmt="rgb")
+        tex.blit_buffer(rgb.tobytes(), colorfmt="rgb", bufferfmt="ubyte")
+        self.texture = tex
+        self.canvas.ask_update()
+
+    def release(self):
+        self._event.cancel()
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+
+
 class QRScannerApp(App):
     plc_ip = StringProperty(PLC_IP_DEFAULT)
     status_text = StringProperty("Iniciando...")
@@ -211,6 +256,10 @@ class QRScannerApp(App):
             self.camera.play = False
         return True
 
+    def on_stop(self):
+        if isinstance(self.camera, DesktopCamera):
+            self.camera.release()
+
     def on_resume(self):
         if self.camera and self.scanning:
             self.camera.play = True
@@ -245,10 +294,13 @@ class QRScannerApp(App):
 
     def _start_camera(self):
         try:
-            self.camera = Factory.RotatedCamera(
-                index=0, resolution=(640, 480), play=True,
-                fit_mode="contain", size_hint=(1, 1),
-                pos_hint={"x": 0, "y": 0})
+            common = dict(fit_mode="contain", size_hint=(1, 1),
+                          pos_hint={"x": 0, "y": 0})
+            if IS_ANDROID:
+                self.camera = Factory.RotatedCamera(
+                    index=0, resolution=(640, 480), play=True, **common)
+            else:
+                self.camera = DesktopCamera(index=0, play=True, **common)
         except Exception as e:
             self.set_status(f"No se pudo abrir la cámara: {e}", "error")
             return
@@ -280,6 +332,13 @@ class QRScannerApp(App):
 
     def _scan_frame(self, dt):
         if not (self.scanning and self.scan_enabled and self.camera):
+            return
+        if isinstance(self.camera, DesktopCamera):
+            bgr = self.camera.frame_bgr
+            if bgr is not None:
+                texto, points = self._decode(bgr)
+                if texto:
+                    self._show_result(texto, bgr, points)
             return
         tex = self.camera.texture
         if tex is None:
