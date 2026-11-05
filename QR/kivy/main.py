@@ -216,7 +216,7 @@ BoxLayout:
         opacity: 1 if app.qr_text else 0
 
     GridLayout:
-        cols: 3
+        cols: 2
         size_hint_y: None
         height: dp(60)
         spacing: dp(12)
@@ -224,10 +224,6 @@ BoxLayout:
             text: 'Enviando...' if app.sending else 'Enviar QR al PLC'
             disabled: (not app.qr_text) or app.sending or (not app.scan_enabled)
             on_release: app.send_to_plc()
-        QrBoton:
-            text: 'Ir a la página'
-            disabled: not app.qr_is_url
-            on_release: app.open_qr_url()
         QrBoton:
             text: 'Escanear de nuevo'
             on_release: app.show_camera()
@@ -283,7 +279,6 @@ class QRScannerApp(App):
     status_text = StringProperty("Iniciando...")
     status_color = ListProperty(STATUS_COLORS["info"])
     qr_text = StringProperty("")
-    qr_is_url = BooleanProperty(False)
     sending = BooleanProperty(False)
     scanning = BooleanProperty(False)
     scan_enabled = BooleanProperty(True)
@@ -335,10 +330,6 @@ class QRScannerApp(App):
 
     def open_optix(self):
         webbrowser.open(OPTIX_URL)
-
-    def open_qr_url(self):
-        if self.qr_is_url:
-            webbrowser.open(self.qr_text)
 
     # --- Cámara -------------------------------------------------------------
     @mainthread
@@ -466,7 +457,6 @@ class QRScannerApp(App):
 
         if texto:
             self.qr_text = texto
-            self.qr_is_url = texto.startswith(("http://", "https://"))
             self.set_status("Código QR detectado", "ok")
         else:
             self._clear_result()
@@ -476,7 +466,6 @@ class QRScannerApp(App):
 
     def _clear_result(self):
         self.qr_text = ""
-        self.qr_is_url = False
 
     @staticmethod
     def _to_texture(bgr):
